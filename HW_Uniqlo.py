@@ -1,42 +1,84 @@
-from selenium import webdriver
 import time
-
-from selenium.webdriver.common.keys import Keys
+import requests
+import os
+import pandas as pd
+import openpyxl
+from bs4 import BeautifulSoup
+from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 
-url ='https://www.uniqlo.com/tw/zh_TW/ut.html'
+# 建立 Excel
+wb = openpyxl.Workbook()
+ws = wb.active
+ws.append(["商品名稱", "價格"])
 
+# 開啟網頁
 driver = webdriver.Chrome()
+driver.get('https://www.uniqlo.com/tw/zh_TW/')
 
-driver.get(url)
+htmlfile = driver.page_source
+
 driver.maximize_window()
 time.sleep(5)
-# info = driver.find_element(By.LINK_TEXT,'WOMEN')
-# info = driver.find_elements(By.CSS_SELECTOR,'.li-search')
+
+# 點搜尋圖示
+search_btn = driver.find_element(By.CSS_SELECTOR, 'li.li-search')
+search_btn.click()
 time.sleep(2)
-# aainfo = driver.find_elements(By.CLASS_NAME,'search-box')\
-search = driver.find_element(By.CLASS_NAME,'search-box')
 
-search.send_keys('mickey')
-# search.click()
-
-"""
-# link2 = driver.find_element(By.CLASS_NAME,'h-footer')
-# link2.click()
-# 點圖片
-# img = driver.find_element(By.XPATH, '//img[contains(@src, "w_ut_1280x230.jpg")]')
-# img.click()
-"""
-
-
+# 點搜尋輸入欄並輸入關鍵字
+search_input = driver.find_element(By.CSS_SELECTOR, 'input[placeholder="請輸入關鍵字"]')
+search_input.click()
+search_input.send_keys('pokemon')
+search_input.send_keys(Keys.ENTER)
 time.sleep(3)
 
-# for item in info:
-#     title = item.find_element(By.CLASS_NAME,'product-card__title').text
-#     price = item.find_element(By.CLASS_NAME,'product-card__price').text
-#     print(f'{title}:{price}')
-#
-# time.sleep(5)
+#Capture Pic
+soup = BeautifulSoup(htmlfile, 'html.parser')
+imgs = soup.find_all('picture-img')
+print(imgs)
+time.sleep(2)
+i = 1
+for img in imgs:
+    # print(img['data-landscape-url'])
+    path = img['data-landscape-url']
+    name = img['alt']
+    source = requests.get(path)
+    img_source = source.content
+    os.makedirs('images', exist_ok=True)
 
+    with open(f'images/{name}-{i}.jpg', 'wb') as f:
+        f.write(img_source)
 
+    i += 1
 
+"""
+# 自動捲動頁面，載入所有商品
+last_height = driver.execute_script("return document.body.scrollHeight")
+for _ in range(5):  # 捲動 5 次
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    time.sleep(2)
+    new_height = driver.execute_script("return document.body.scrollHeight")
+    if new_height == last_height:
+        break
+    last_height = new_height
+
+# 捲動完後再抓所有商品
+info = driver.find_elements(By.CLASS_NAME,'product-description')
+
+for item in info:
+    try:
+        title = item.find_element(By.CLASS_NAME, 'ec-font-sub-title').text.strip()
+        price = item.find_element(By.CLASS_NAME, 'product-price').text.strip()
+        print(f'{title} : {price}')
+        ws.append([title, price])
+    except Exception as e:
+        print(' 略過商品：', e)
+        continue
+        
+# 儲存 Excel
+wb.save('uniqlo_pokemon.xlsx')
+driver.quit()
+print('完成！資料已儲存為 uniqlo_pokemon.xlsx')
+"""
